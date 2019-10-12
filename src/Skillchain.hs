@@ -4,7 +4,7 @@ module Skillchain (
   WeaponType(..), 
   Weaponskill(..), 
   createScMap,
-  everyWsCombo
+  findAllScForWeapons
 ) where
 
 import Data.Map.Lazy as Map
@@ -32,42 +32,6 @@ data SkillchainType =
   | Radiance
   | Umbra
   deriving (Eq, Show, Enum, Ord, Bounded)
-
---lvl1Sc :: Set SkillchainType
---lvl1Sc = fromList
-  --[
-    --Compression
-  --, Detonation
-  --, Liquefaction
-  --, Impaction
-  --, Induration
-  --, Reverberation
-  --, Scission
-  --, Transfixion
-  --]
-
---lvl2Sc :: Set SkillchainType
---lvl2Sc = fromList
-  --[
-    --Distortion
-  --, Fragmentation
-  --, Fusion
-  --, Gravitation
-  --]
-
---lvl3Sc :: Set SkillchainType
---lvl3Sc = fromList
-  --[
-    --Darkness
-  --, Light
-  --]
-
---ultimateSc :: Set SkillchainType
---ulimateSc = fromList
-  --[
-    --Darkness2
-  --, Light2
-  --]
 
 scMap :: Map SkillchainType [(SkillchainType, SkillchainType)]
 scMap = fromList
@@ -367,15 +331,6 @@ findAllScForWeapons w1 w2 = concat $ Prelude.map (\sc -> findSkillchain sc w1 w2
 howManyWsBetweenWeapons :: [(WeaponType, WeaponType, Int)]
 howManyWsBetweenWeapons = List.sortOn (\(_, _, x) -> x) $ [(w1, w2, length $ findAllScForWeapons w1 w2) 
   | w1 <- [(minBound :: WeaponType)..], w2 <- [(minBound :: WeaponType)..]]
-
-everyWsCombo :: [(Weaponskill, Weaponskill, SkillchainType)]
-everyWsCombo = concat $ [findAllScForWeapons w1 w2 | w1 <- [(minBound :: WeaponType)..], w2 <- [(minBound :: WeaponType)..]]
-
-everyWsCombo' :: [(Weaponskill, Weaponskill)]
-everyWsCombo' = fmap (\(ws1, ws2, _) -> (ws1, ws2)) everyWsCombo
-
-duplicateWs :: [(Weaponskill, Weaponskill, SkillchainType)]
-duplicateWs = repeated everyWsCombo
 
 findSkillchain :: SkillchainType -> WeaponType -> WeaponType -> [(Weaponskill, Weaponskill, SkillchainType)]
 findSkillchain sc w1 w2 =

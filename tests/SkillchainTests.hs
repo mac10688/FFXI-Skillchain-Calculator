@@ -32,7 +32,12 @@ scMapTests = TestLabel "ScMapTests" $
   TestList  [ impactionH2hKeyTest
             , impactionH2hValueTest
             , impactionH2hValueTestNot]
-            
+
+everyWsCombo :: [(Weaponskill, Weaponskill)]
+everyWsCombo = List.map (\(ws1, ws2, _) -> (ws1, ws2))
+  $ concat 
+  $ [findAllScForWeapons w1 w2 | w1 <- [(minBound :: WeaponType)..], w2 <- [(minBound :: WeaponType)..]]
+
 noDuplicateSkillchains =
   let
     weaponSkills = everyWsCombo
