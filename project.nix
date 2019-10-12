@@ -1,11 +1,11 @@
-{ mkDerivation, base, containers, HUnit, stdenv }:
+{ mkDerivation, base, containers, HUnit, stdenv, Unique }:
 mkDerivation {
   pname = "SkillchainCalculatorProject";
   version = "0.1.0.0";
   src = ./.;
   isLibrary = false;
   isExecutable = true;
-  libraryHaskellDepends = [ base containers ];
+  libraryHaskellDepends = [ base containers Unique ];
   executableHaskellDepends = [ base ];
   testHaskellDepends = [ base containers HUnit ];
   doHaddock = false;

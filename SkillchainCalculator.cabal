@@ -61,6 +61,7 @@ library skillchain-library
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.12 && <4.13
                       ,containers
+                      ,Unique
 
   -- Directories containing source files.
   hs-source-dirs:      src
