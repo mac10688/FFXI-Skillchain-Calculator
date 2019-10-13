@@ -62,6 +62,7 @@ library skillchain-library
   build-depends:       base >=4.12 && <4.13
                       ,containers
                       ,Unique
+                      ,aeson
 
   -- Directories containing source files.
   hs-source-dirs:      src
@@ -82,6 +83,12 @@ executable SkillchainCalculator
 
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.12 && <4.13
+                      ,scotty
+                      ,mtl
+                      ,text
+                      ,containers
+                      ,Unique
+                      ,aeson
 
   -- Directories containing source files.
   hs-source-dirs:      src

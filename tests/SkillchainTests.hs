@@ -16,16 +16,16 @@ shijinSpiral = Weaponskill "Shijin Spiral" HandToHand [Fusion, Reverberation]
 
 impactionH2hKeyTest = TestCase $ assertBool 
   "Does (Impaction, HandToHande) key exist" $
-  (Impaction, HandToHand) `Map.member` createScMap
+  (Impaction, HandToHand) `Map.member` wsForSkillchainAndWeapon
 
 impactionH2hValueTest = TestCase $ assertBool
   "Impaction HandToHand has Combo, Shoulder Tackle, Raging Fists, Spinning Attack, Howling Fist" $ 
   isSubsequenceOf [combo, shoulderTackle, ragingFist, spinningAttack, howlingFist] 
-  $ createScMap ! (Impaction, HandToHand) 
+  $ wsForSkillchainAndWeapon ! (Impaction, HandToHand) 
 
 impactionH2hValueTestNot = TestCase $ assertBool
   "Impaction HandToHand does not have Shijin Spiral" $ 
-  not $ elem shijinSpiral $ createScMap ! (Impaction, HandToHand) 
+  not $ elem shijinSpiral $ wsForSkillchainAndWeapon ! (Impaction, HandToHand) 
 
 
 scMapTests = TestLabel "ScMapTests" $
