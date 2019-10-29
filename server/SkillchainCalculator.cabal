@@ -89,6 +89,7 @@ executable SkillchainCalculator
                       ,containers
                       ,Unique
                       ,aeson
+                      ,wai-cors
 
   -- Directories containing source files.
   hs-source-dirs:      src
