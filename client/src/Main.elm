@@ -31,8 +31,8 @@ firstWeapon =
   { items = weaponsToChoose
   , emptyItem = Just { value = "N/A", text = "Pick a weapon", enabled = True }
   , onChange = (\mItem -> case mItem of
-                            Just item -> Weapon1Changed <| Just item
-                            Nothing -> Weapon1Changed Nothing
+      Just item -> Weapon1Changed <| Just item
+      Nothing -> Weapon1Changed Nothing
     )
   }
 
@@ -77,7 +77,7 @@ init flags url key = ( Model key url [] Nothing Nothing, Cmd.none )
 type Msg
   = LinkClicked Browser.UrlRequest
   | UrlChanged Url.Url
-  | GotText (Result Http.Error (List Ws))
+  | GotWsInformation (Result Http.Error (List Ws))
   | Weapon1Changed (Maybe String)
   | Weapon2Changed (Maybe String)
   | GetItems
@@ -108,11 +108,11 @@ update msg model =
       ( model, case (model.weapon1, model.weapon2) of
           (Just w1, Just w2) -> Http.get
             { url = "http://localhost:3000/sc/" ++ w1 ++ "/" ++ w2 
-            , expect = Http.expectJson GotText (Json.Decode.list wsDecoder)
+            , expect = Http.expectJson GotWsInformation (Json.Decode.list wsDecoder)
             }
           _ -> Cmd.none
       )
-    GotText 
+    GotWsInformation
         result ->
       case result of
         Ok fullText ->
@@ -142,16 +142,7 @@ view : Model -> Browser.Document Msg
 view model =
   { title = "Skillchain Finder"
   , body =
-    [ text "The current URL is: "
-    , b [] [ text (Url.toString model.url) ]
-    , ul []
-      [ viewLink "/home"
-      , viewLink "/profile"
-      , viewLink "/reviews/the-century-of-the-shelf"
-      , viewLink "/reviews/public-opinion"
-      , viewLink "/reviews/shah-of-shahs"
-      ]
-    , Dropdown.dropdown firstWeapon [] Nothing
+    [ Dropdown.dropdown firstWeapon [] Nothing
     , Dropdown.dropdown secondWeapon [] Nothing
     , 
         table [] <| List.map (\combo -> 
