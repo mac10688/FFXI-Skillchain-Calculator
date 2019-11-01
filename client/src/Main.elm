@@ -6,6 +6,8 @@ import Url
 import Http exposing (..)
 import Json.Decode exposing (..)
 
+import Dropdown exposing (..)
+
 main : Program () Model Msg
 main =
   Browser.application
@@ -17,12 +19,41 @@ main =
   , onUrlRequest = LinkClicked
   }
 
+weaponsToChoose : List Dropdown.Item
+weaponsToChoose = 
+  [
+    { value = "Club", text = "Club", enabled = True }
+  , { value = "Sword", text = "Sword", enabled = True }
+  ]
+
+firstWeapon : Dropdown.Options Msg
+firstWeapon =
+  { items = weaponsToChoose
+  , emptyItem = Just { value = "N/A", text = "Pick a weapon", enabled = True }
+  , onChange = (\mItem -> case mItem of
+                            Just item -> Weapon1Changed <| Just item
+                            Nothing -> Weapon1Changed Nothing
+    )
+  }
+
+secondWeapon : Options Msg
+secondWeapon =
+  { items = weaponsToChoose
+  , emptyItem = Just { value = "N/A", text = "Pick a weapon", enabled = True }
+  , onChange = (\mItem -> case mItem of
+      Just item -> Weapon2Changed <| Just item
+      Nothing -> Weapon2Changed Nothing
+    )
+  }
+
 -- MODEL
 
 type alias Model =
   { key : Nav.Key
   , url : Url.Url
   , weaponskills : List Ws
+  , weapon1 : Maybe String
+  , weapon2 : Maybe String
   }
 
 type alias Ws =
@@ -39,12 +70,7 @@ wsDecoder =
     (field "sc" string)
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key =
-  ( Model key url [], Http.get
-    { url = "http://localhost:3000/sc/Club/Club"
-    , expect = Http.expectJson GotText (Json.Decode.list wsDecoder)
-    }
-  )
+init flags url key = ( Model key url [] Nothing Nothing, Cmd.none )
 
 -- UPDATE
 
@@ -52,6 +78,9 @@ type Msg
   = LinkClicked Browser.UrlRequest
   | UrlChanged Url.Url
   | GotText (Result Http.Error (List Ws))
+  | Weapon1Changed (Maybe String)
+  | Weapon2Changed (Maybe String)
+  | GetItems
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -69,7 +98,22 @@ update msg model =
       , Cmd.none
       )
 
-    GotText result ->
+    Weapon1Changed weapon -> 
+      update GetItems { model | weapon1 = weapon } 
+    
+    Weapon2Changed weapon ->
+      update GetItems { model | weapon2 = weapon }
+
+    GetItems ->
+      ( model, case (model.weapon1, model.weapon2) of
+          (Just w1, Just w2) -> Http.get
+            { url = "http://localhost:3000/sc/" ++ w1 ++ "/" ++ w2 
+            , expect = Http.expectJson GotText (Json.Decode.list wsDecoder)
+            }
+          _ -> Cmd.none
+      )
+    GotText 
+        result ->
       case result of
         Ok fullText ->
           ( { model | weaponskills = fullText }, Cmd.none)
@@ -96,7 +140,7 @@ subscriptions _ =
 
 view : Model -> Browser.Document Msg
 view model =
-  { title = "URL Interceptor"
+  { title = "Skillchain Finder"
   , body =
     [ text "The current URL is: "
     , b [] [ text (Url.toString model.url) ]
@@ -107,6 +151,8 @@ view model =
       , viewLink "/reviews/public-opinion"
       , viewLink "/reviews/shah-of-shahs"
       ]
+    , Dropdown.dropdown firstWeapon [] Nothing
+    , Dropdown.dropdown secondWeapon [] Nothing
     , 
         table [] <| List.map (\combo -> 
           tr []
