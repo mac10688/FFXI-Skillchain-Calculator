@@ -63,6 +63,7 @@ library skillchain-library
                       ,containers
                       ,Unique
                       ,aeson
+                      ,safe
 
   -- Directories containing source files.
   hs-source-dirs:      src

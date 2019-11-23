@@ -4,12 +4,8 @@
 module Skillchain (
   SkillchainAttr(..), 
   Skillchain,
-  scMappedToCombos, 
   WeaponType(..), 
   Weaponskill(..), 
-  wsForSkillchainAndWeapon,
-  findAllScForWeapons,
-  WsComboAndResultSc
 ) where
 
 import Data.Map.Lazy as Map
@@ -18,6 +14,7 @@ import Data.Maybe as Maybe
 import Data.List.Unique as Unique
 import Data.Aeson as Aeson
 import GHC.Generics as Generics
+import Safe.Foldable as Safe
 
 data Skillchain =
     Transfixion
@@ -47,7 +44,7 @@ type SkillchainComposition = (SkillchainAttr, SkillchainAttr)
 data SkillchainCombination = ScStart Weaponskill ScContinuation
 
 instance Show SkillchainCombination where
-  show (ScStart ws coninutation) = show ws ++ " -> " ++ show continuation
+  show (ScStart ws continuation) = show ws ++ " -> " ++ show continuation
 
 data ScContinuation = ScContinuation Weaponskill Skillchain (Maybe ScContinuation)
 
@@ -344,37 +341,41 @@ weaponSkills = [ Weaponskill "Combo" HandToHand [Impaction]
                , Weaponskill "Leaden Salute" Marksmanship [Gravitation, Transfixion]
                ]
 
-a :: [Weapontype] -> [SkillchainCombination]
-a [] = []
-a weapons = 
+scCombinations :: [WeaponType] -> [SkillchainCombination]
+scCombinations [] = []
+scCombinations weapons = 
   let
-    weaponskills = a''' $ a' weapons 
+    weaponskills = expandWsCombo $ getAllWs weapons 
   in
-    catMaybes map b weaponskills
+    catMaybes $ List.map findPossibleScCombo weaponskills
 
-a' :: [Weapontype] -> [[Weaponskill]]
-a' weapons = foldr (\w acc -> a'' w : acc) weapons
+getAllWs :: [WeaponType] -> [[Weaponskill]]
+getAllWs weapons = List.foldr (\w acc -> getWs w : acc) [] weapons
     
-a'' :: WeaponType -> [Weaponskill]
-a'' weapon = map (\x -> findWithDefault [] x weaponskillsByWeaponType) weapon
+getWs :: WeaponType -> [Weaponskill]
+getWs weapon = findWithDefault [] weapon weaponskillsByWeaponType
 
-a''' :: [[Weaponskill]] -> [[Weaponskill]]
-a''' []       = [[]]
-a''' (xs:xss) = [ x:xs_ | x <- xs, xs_ <- mulLists xss ]
+expandWsCombo :: [[Weaponskill]] -> [[Weaponskill]]
+expandWsCombo []       = [[]]
+expandWsCombo (xs:xss) = [ x:xs_ | x <- xs, xs_ <- expandWsCombo xss ]
     
+
 weaponskillsByWeaponType :: Map WeaponType [Weaponskill]
-weaponskillsByWeaponType = foldr (\ws m -> insert ws.weaponType ws m ) empty weaponSkills
-
-b :: [Weaponskill] -> Maybe SkillchainCombination
-b (w1:w2:ws) = 
+weaponskillsByWeaponType =
+  Map.fromList 
+  $ List.map (\w -> (w, List.filter (\ws -> (weaponType ws) == w) weaponSkills)) [(minBound :: WeaponType)..]
+ 
+findPossibleScCombo:: [Weaponskill] -> Maybe SkillchainCombination
+findPossibleScCombo (w1:w2:ws) = 
   let
-    maybeSc = b' w1 w2
+    maybeSc = findPossibleSc w1 w2
   in
     case maybeSc of
-      Just sc' -> ScStart w1 $ ScContinuation w2 sc' $ b'' sc' ws
+      Just sc' -> Just $ ScStart w1 $ ScContinuation w2 sc' $ findPossibleScContinuation sc' ws
+      Nothing -> Nothing
 
-b' :: Weaponskill -> Weaponskill -> Maybe Skillchain
-b' ws1 ws2 =
+findPossibleSc :: Weaponskill -> Weaponskill -> Maybe Skillchain
+findPossibleSc ws1 ws2 =
   let
     wsCombos = List.foldr (\key accum -> 
       case Map.lookup key scByComposition of
@@ -386,14 +387,17 @@ b' ws1 ws2 =
       [] -> Nothing
       xs -> Just $ maximum wsCombos
 
-b'' :: SkillchainAttr -> [Weaponskill] -> Maybe ScContinuation
-b'' _ [] = Nothing
-b'' sc (w:ws) = let
-    maybeSc = b''' sc w 
+findPossibleScContinuation :: SkillchainAttr -> [Weaponskill] -> Maybe ScContinuation
+findPossibleScContinuation _ [] = Nothing
+findPossibleScContinuation sc (w:ws) = let
+    maybeSc = contPossibleSc sc w 
   in
     case maybeSc of
-      Just sc' -> ScContinuation sc' w $ b'' sc' ws
+      Just sc' -> Just $ ScContinuation w sc' $ findPossibleScContinuation sc' ws
       Nothing -> Nothing
 
-b''' :: SkillchainAttr -> Weaponskill -> Maybe Skillchain
-b''' sc ws = maximum $ catMaybes $ map (\x -> lookup skillchainByComposition (sc, x) ) ws.skillchainAttributes
+contPossibleSc :: SkillchainAttr -> Weaponskill -> Maybe Skillchain
+contPossibleSc sc ws = 
+  maximumMay 
+  $ catMaybes 
+  $ List.map (\x -> Map.lookup (sc, x) scByComposition ) (skillchainAttributes ws)
