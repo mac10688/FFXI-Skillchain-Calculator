@@ -5,6 +5,9 @@ import Html.Attributes exposing (..)
 import Url
 import Http exposing (..)
 import Json.Decode exposing (..)
+import Dict exposing (Dict, empty, insert, remove, get, size, values)
+import List exposing (intersperse)
+import String exposing (concat)
 
 import Dropdown exposing (..)
 
@@ -26,23 +29,13 @@ weaponsToChoose =
   , { value = "Sword", text = "Sword", enabled = True }
   ]
 
-firstWeapon : Dropdown.Options Msg
-firstWeapon =
+chosenWeapons : Int -> Options Msg
+chosenWeapons index =
   { items = weaponsToChoose
   , emptyItem = Just { value = "N/A", text = "Pick a weapon", enabled = True }
   , onChange = (\mItem -> case mItem of
-      Just item -> Weapon1Changed <| Just item
-      Nothing -> Weapon1Changed Nothing
-    )
-  }
-
-secondWeapon : Options Msg
-secondWeapon =
-  { items = weaponsToChoose
-  , emptyItem = Just { value = "N/A", text = "Pick a weapon", enabled = True }
-  , onChange = (\mItem -> case mItem of
-      Just item -> Weapon2Changed <| Just item
-      Nothing -> Weapon2Changed Nothing
+      Just item -> ChosenWeapon index <| Just item
+      Nothing -> ChosenWeapon index Nothing
     )
   }
 
@@ -52,8 +45,7 @@ type alias Model =
   { key : Nav.Key
   , url : Url.Url
   , weaponskills : List Ws
-  , weapon1 : Maybe String
-  , weapon2 : Maybe String
+  , chosenWeapons : Dict Int String
   }
 
 type alias Ws =
@@ -70,7 +62,7 @@ wsDecoder =
     (field "sc" string)
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init flags url key = ( Model key url [] Nothing Nothing, Cmd.none )
+init flags url key = ( Model key url [] empty, Cmd.none )
 
 -- UPDATE
 
@@ -78,8 +70,7 @@ type Msg
   = LinkClicked Browser.UrlRequest
   | UrlChanged Url.Url
   | GotWsInformation (Result Http.Error (List Ws))
-  | Weapon1Changed (Maybe String)
-  | Weapon2Changed (Maybe String)
+  | ChosenWeapon Int (Maybe String)
   | GetItems
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -98,20 +89,29 @@ update msg model =
       , Cmd.none
       )
 
-    Weapon1Changed weapon -> 
-      update GetItems { model | weapon1 = weapon } 
+    ChosenWeapon index weapon -> 
+      case weapon of
+        Just wep -> update GetItems { model | chosenWeapons = insert index wep model.chosenWeapons } 
+        Nothing -> update GetItems { model | chosenWeapons = remove index model.chosenWeapons }
     
-    Weapon2Changed weapon ->
-      update GetItems { model | weapon2 = weapon }
-
+    --GetItems ->
+      --( model, case (model.weapon1, model.weapon2) of
+          --(Just w1, Just w2) -> Http.get
+            --{ url = "http://localhost:3000/sc/" ++ w1 ++ "/" ++ w2 
+            --, expect = Http.expectJson GotWsInformation (Json.Decode.list wsDecoder)
+            --}
+          --_ -> Cmd.none
+      --)
     GetItems ->
-      ( model, case (model.weapon1, model.weapon2) of
-          (Just w1, Just w2) -> Http.get
-            { url = "http://localhost:3000/sc/" ++ w1 ++ "/" ++ w2 
-            , expect = Http.expectJson GotWsInformation (Json.Decode.list wsDecoder)
+      (model, 
+      if (size model.chosenWeapons > 1) then
+          Http.get
+            { url = "http://localhost:3000/sc/" ++ urlHelper model.chosenWeapons
+            , expect = Http.expectJson GotWsInformation (Json.Decode.list wsDecoder) 
             }
-          _ -> Cmd.none
-      )
+      else
+        Cmd.none)
+
     GotWsInformation
         result ->
       case result of
@@ -130,6 +130,11 @@ update msg model =
             BadBody body ->
               ( { model | weaponskills = []}, Cmd.none)
 
+
+urlHelper : Dict Int String -> String
+urlHelper dict =
+  concat <| intersperse "," <| values dict
+
 -- SUBSCRIPTIONS
 
 subscriptions : Model -> Sub Msg
@@ -142,8 +147,9 @@ view : Model -> Browser.Document Msg
 view model =
   { title = "Skillchain Finder"
   , body =
-    [ Dropdown.dropdown firstWeapon [] Nothing
-    , Dropdown.dropdown secondWeapon [] Nothing
+    [ Dropdown.dropdown (chosenWeapons 1) [] Nothing
+    , Dropdown.dropdown (chosenWeapons 2) [] Nothing
+    , Dropdown.dropdown (chosenWeapons 3) [] Nothing
     , 
         table [] <| List.map (\combo -> 
           tr []

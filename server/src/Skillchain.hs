@@ -3,6 +3,7 @@
 
 module Skillchain (
   SkillchainAttr(..), 
+  Skillchain,
   scMappedToCombos, 
   WeaponType(..), 
   Weaponskill(..), 
@@ -18,7 +19,7 @@ import Data.List.Unique as Unique
 import Data.Aeson as Aeson
 import GHC.Generics as Generics
 
-data SkillchainAttr =
+data Skillchain =
     Transfixion
   | Compression
   | Liquefaction
@@ -39,15 +40,27 @@ data SkillchainAttr =
   | Umbra
   deriving (Eq, Show, Enum, Ord, Bounded, Generic, Read)
 
-type SkillchainCombo = (SkillchainAttr, SkillchainAttr)
-type WsComboAndResultSc = (Weaponskill, Weaponskill, SkillchainAttr)
+type SkillchainAttr = Skillchain
+
+type SkillchainComposition = (SkillchainAttr, SkillchainAttr)
+
+data SkillchainCombination = ScStart Weaponskill ScContinuation
+
+instance Show SkillchainCombination where
+  show (ScStart ws coninutation) = show ws ++ " -> " ++ show continuation
+
+data ScContinuation = ScContinuation Weaponskill Skillchain (Maybe ScContinuation)
+
+instance Show ScContinuation where
+  show (ScContinuation ws sc Nothing) = show ws ++ " -> " ++ show sc ++ "\n"
+  show (ScContinuation ws sc (Just continue)) = show ws ++ " -> " ++ show sc ++ " -> " ++ show continue ++ "\n"
 
 instance ToJSON Weaponskill
-instance ToJSON SkillchainAttr
+instance ToJSON Skillchain
 instance ToJSON WeaponType
 
-scMappedToCombos :: Map SkillchainAttr [SkillchainCombo]
-scMappedToCombos = fromList
+compositionsBySc :: Map Skillchain [SkillchainComposition]
+compositionsBySc = fromList
   [
     (Liquefaction, [(Impaction, Liquefaction), (Scission, Liquefaction)])
   , (Impaction, [(Reverberation, Impaction), (Induration, Impaction)])
@@ -67,8 +80,8 @@ scMappedToCombos = fromList
   , (Darkness2, [(Darkness, Darkness)])
   ]
 
-scComboMappedToSc :: Map SkillchainCombo SkillchainAttr
-scComboMappedToSc = fromList
+scByComposition :: Map SkillchainComposition Skillchain
+scByComposition = fromList
   [
     ((Impaction, Liquefaction), Liquefaction)
   , ((Scission, Liquefaction), Liquefaction)
@@ -331,59 +344,40 @@ weaponSkills = [ Weaponskill "Combo" HandToHand [Impaction]
                , Weaponskill "Leaden Salute" Marksmanship [Gravitation, Transfixion]
                ]
 
-wsForSkillchainAndWeapon :: Map (SkillchainAttr, WeaponType) [Weaponskill]
-wsForSkillchainAndWeapon = Prelude.foldr (\ ws@(Weaponskill n w scs) returnMap -> 
+a :: [Weapontype] -> [SkillchainCombination]
+a [] = []
+a weapons = 
   let
-    localMap = fromList $ Prelude.map (\sc -> ((sc, w), [ws])) scs
-  in 
-    unionWith (\lv rv -> head lv : rv ) localMap returnMap) Map.empty weaponSkills
-
-findAllScForWeapons :: WeaponType -> WeaponType -> [WsComboAndResultSc]
-findAllScForWeapons w1 w2 = concat $ Prelude.map (\sc -> findSkillchain sc w1 w2) [(minBound :: SkillchainAttr)..]
-
-instance {-# OVERLAPPING #-} Show [WsComboAndResultSc] where
-  show [] = ""
-  show (x:xs) = show x ++ "\n" ++ show xs
-
-instance {-# OVERLAPPING #-} Show WsComboAndResultSc where
-  show (ws1, ws2, sc) = show ws1 ++ " -> " ++ show ws2 ++ " -> " ++ show sc 
-
-howManyWsBetweenWeapons :: [(WeaponType, WeaponType, Int)]
-howManyWsBetweenWeapons = 
-  List.sortOn (\(_, _, x) -> x) $ [(w1, w2, length $ findAllScForWeapons w1 w2) 
-  | w1 <- [(minBound :: WeaponType)..], w2 <- [(minBound :: WeaponType)..]]
-
-findSkillchain :: SkillchainAttr -> WeaponType -> WeaponType -> [WsComboAndResultSc]
-findSkillchain sc w1 w2 =
-  case Map.lookup sc scMappedToCombos of
-    Nothing -> []
-    Just scs -> unique $ concat $ Prelude.map (\ scT -> findWeaponskillsForSc sc scT w1 w2) scs
-
-findWeaponskillsForSc :: SkillchainAttr
-                      -> SkillchainCombo 
-                      -> WeaponType
-                      -> WeaponType 
-                      -> [WsComboAndResultSc]
-findWeaponskillsForSc sc (sc1, sc2) w1 w2 =
-  let
-    mwsc1 = wsForSkillchainAndWeapon !? (sc1, w1) 
-    mwsc2 = wsForSkillchainAndWeapon !? (sc2, w2)
+    weaponskills = a''' $ a' weapons 
   in
-    case (mwsc1, mwsc2) of
-      (Just wsc1, Just wsc2) -> 
-        List.filter (\(ws1, ws2, sc') ->
-          case findSkillchainForWs ws1 ws2 of
-            Just sc' -> sc == sc'
-            Nothing -> False
-        )
-        $ [(ws1, ws2, sc) | ws1 <- wsc1, ws2 <- wsc2]
-      otherwise -> []
+    catMaybes map b weaponskills
+
+a' :: [Weapontype] -> [[Weaponskill]]
+a' weapons = foldr (\w acc -> a'' w : acc) weapons
     
-findSkillchainForWs :: Weaponskill -> Weaponskill -> Maybe SkillchainAttr
-findSkillchainForWs ws1 ws2 =
+a'' :: WeaponType -> [Weaponskill]
+a'' weapon = map (\x -> findWithDefault [] x weaponskillsByWeaponType) weapon
+
+a''' :: [[Weaponskill]] -> [[Weaponskill]]
+a''' []       = [[]]
+a''' (xs:xss) = [ x:xs_ | x <- xs, xs_ <- mulLists xss ]
+    
+weaponskillsByWeaponType :: Map WeaponType [Weaponskill]
+weaponskillsByWeaponType = foldr (\ws m -> insert ws.weaponType ws m ) empty weaponSkills
+
+b :: [Weaponskill] -> Maybe SkillchainCombination
+b (w1:w2:ws) = 
+  let
+    maybeSc = b' w1 w2
+  in
+    case maybeSc of
+      Just sc' -> ScStart w1 $ ScContinuation w2 sc' $ b'' sc' ws
+
+b' :: Weaponskill -> Weaponskill -> Maybe Skillchain
+b' ws1 ws2 =
   let
     wsCombos = List.foldr (\key accum -> 
-      case Map.lookup key scComboMappedToSc of
+      case Map.lookup key scByComposition of
         Just sc -> sc : accum
         Nothing -> accum
       ) [] [(sc1, sc2) | sc1 <- skillchainAttributes ws1, sc2 <- skillchainAttributes ws2]
@@ -391,5 +385,15 @@ findSkillchainForWs ws1 ws2 =
     case wsCombos of
       [] -> Nothing
       xs -> Just $ maximum wsCombos
-  
 
+b'' :: SkillchainAttr -> [Weaponskill] -> Maybe ScContinuation
+b'' _ [] = Nothing
+b'' sc (w:ws) = let
+    maybeSc = b''' sc w 
+  in
+    case maybeSc of
+      Just sc' -> ScContinuation sc' w $ b'' sc' ws
+      Nothing -> Nothing
+
+b''' :: SkillchainAttr -> Weaponskill -> Maybe Skillchain
+b''' sc ws = maximum $ catMaybes $ map (\x -> lookup skillchainByComposition (sc, x) ) ws.skillchainAttributes
