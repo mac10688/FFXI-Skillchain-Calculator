@@ -13,42 +13,65 @@ ragingFist = Weaponskill "Raging Fists" HandToHand [Impaction]
 spinningAttack = Weaponskill "Spinning Attack" HandToHand [Liquefaction, Impaction]
 howlingFist = Weaponskill "Howling Fist" HandToHand [Impaction, Transfixion]
 shijinSpiral = Weaponskill "Shijin Spiral" HandToHand [Fusion, Reverberation]
+spinningAxe = Weaponskill "Spinning Axe" Axe [Liquefaction, Scission, Impaction]
 
-impactionH2hKeyTest = TestCase $ assertBool 
-  "Does (Impaction, HandToHande) key exist" $
-  (Impaction, HandToHand) `Map.member` wsForSkillchainAndWeapon
+main = runTestTT $ TestList [
+  TestLabel "mayScFromScAttrToWs" $
+    TestList [
+               TestCase $ assertBool
+               "Scission -> Spinning Axe -> Liquefaction"
+               (mayScFromScAttrToWs Scission spinningAxe == Just Liquefaction),
 
-impactionH2hValueTest = TestCase $ assertBool
-  "Impaction HandToHand has Combo, Shoulder Tackle, Raging Fists, Spinning Attack, Howling Fist" $ 
-  isSubsequenceOf [combo, shoulderTackle, ragingFist, spinningAttack, howlingFist] 
-  $ wsForSkillchainAndWeapon ! (Impaction, HandToHand) 
+               TestCase $ assertBool
+               "Transfixion -> Combo -> Nothing"
+               (mayScFromScAttrToWs Transfixion combo == Nothing)
+             ], 
+  TestLabel "mayScContFromScAttrWs" $
+    TestList [
+              TestCase $ assertBool
+              "Scission -> Spinning Axe -> Liquefaction -> Spinning Axe -> Scission" $
+              mayScContFromScAttrWs Scission [spinningAxe, spinningAxe] ==
+              (Just 
+              $ ScContinuation spinningAxe Liquefaction
+              $ Just 
+              $ ScContinuation spinningAxe Scission Nothing)
+             ],
+  TestLabel "mayScFromTwoWs" $
+    TestList [
+              TestCase $ assertBool
+              "Spinning Axe -> Spinning Axe -> Scission" $
+              mayScFromTwoWs spinningAxe spinningAxe == Just Scission
+             ],
+  TestLabel "allCombinations" $
+    TestList [
+                TestCase $ assertBool
+                "[[1,2,3], [4,5], [6,7,8,9]]" $
+                allCombinations [[1,2,3], [4,5], [6,7,8,9]] == 
+                [ [1,4,6],
+                  [1,4,7],
+                  [1,4,8],
+                  [1,4,9],
+                  [1,5,6],
+                  [1,5,7],
+                  [1,5,8],
+                  [1,5,9],
+                  [2,4,6],
+                  [2,4,7],
+                  [2,4,8],
+                  [2,4,9],
+                  [2,5,6],
+                  [2,5,7],
+                  [2,5,8],
+                  [2,5,9],
+                  [3,4,6],
+                  [3,4,7],
+                  [3,4,8],
+                  [3,4,9],
+                  [3,5,6],
+                  [3,5,7],
+                  [3,5,8],
+                  [3,5,9]
+                ]
+             ]
+  ]
 
-impactionH2hValueTestNot = TestCase $ assertBool
-  "Impaction HandToHand does not have Shijin Spiral" $ 
-  not $ elem shijinSpiral $ wsForSkillchainAndWeapon ! (Impaction, HandToHand) 
-
-
-scMapTests = TestLabel "ScMapTests" $
-  TestList  [ impactionH2hKeyTest
-            , impactionH2hValueTest
-            , impactionH2hValueTestNot]
-
-everyWsCombo :: [(Weaponskill, Weaponskill)]
-everyWsCombo = List.map (\(ws1, ws2, _) -> (ws1, ws2))
-  $ concat 
-  $ [findAllScForWeapons w1 w2 | w1 <- [(minBound :: WeaponType)..], w2 <- [(minBound :: WeaponType)..]]
-
-noDuplicateSkillchains =
-  let
-    weaponSkills = everyWsCombo
-    setToCompare = Set.fromList weaponSkills
-  in 
-  TestCase $ assertBool
-  "No duplicate skillchains in all the weaponskills"
-  (length weaponSkills == length setToCompare)
-
-
-wsTests = TestLabel "Test Sc Results" $
-  TestList [ noDuplicateSkillchains ]
-
-main = runTestTT $ TestList [scMapTests, wsTests]
