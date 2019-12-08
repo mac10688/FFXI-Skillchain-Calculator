@@ -25,6 +25,7 @@ import Data.Maybe as Maybe
 import Data.List.Unique as Unique
 import Safe as Safe
 import SkillchainData
+import Control.Parallel.Strategies
 
 scCombinations :: [WeaponType] -> [SkillchainCombination]
 scCombinations [] = []
@@ -32,7 +33,7 @@ scCombinations weapons =
   let
     weaponskills = allCombinations $ getAllWs weapons 
   in
-    catMaybes $ List.map mayScFromTwoWsCombo weaponskills
+    catMaybes $ parMap rseq mayScFromTwoWsCombo weaponskills
 
 getAllWs :: [WeaponType] -> [[Weaponskill]]
 getAllWs weapons = List.foldr (\w acc -> getWs w : acc) [] weapons

@@ -6,14 +6,7 @@ import Data.Map.Lazy as Map
 import Data.List as List
 import Data.Set as Set
 import Data.Maybe as Maybe
-
-combo = Weaponskill "Combo" HandToHand [Impaction]
-shoulderTackle = Weaponskill "Shoulder Tackle" HandToHand [Reverberation, Impaction]
-ragingFist = Weaponskill "Raging Fists" HandToHand [Impaction]
-spinningAttack = Weaponskill "Spinning Attack" HandToHand [Liquefaction, Impaction]
-howlingFist = Weaponskill "Howling Fist" HandToHand [Impaction, Transfixion]
-shijinSpiral = Weaponskill "Shijin Spiral" HandToHand [Fusion, Reverberation]
-spinningAxe = Weaponskill "Spinning Axe" Axe [Liquefaction, Scission, Impaction]
+import SkillchainData as SkillchainData
 
 main = runTestTT $ TestList [
   TestLabel "mayScFromScAttrToWs" $
@@ -72,6 +65,16 @@ main = runTestTT $ TestList [
                   [3,5,8],
                   [3,5,9]
                 ]
+             ],
+  TestLabel "getAllWs" $
+    TestList [
+                TestCase $ assertBool
+                "getAllWs [Axe, Sword]" $
+                getAllWs [Axe, Sword] ==
+                  [ 
+                    [ragingAxe, smashAxe, galeAxe, avalanchingAxe, spinningAxe, rampage, calamity, mistralAxe, decimation, boraAxe, ruinator, onslaught, cloudsplitter, primalRend]
+                  , [fastBlade, burningBlade, redLotusBlade, flatBlade, shiningBlade, seraphBlade, circleBlade, spiritsWithin, vorpalBlade, swiftBlade, savageBlade, sanguineBlade, requiescat, knightsOfRound, chantDuCygne, deathBlossom, atonement, expiacion]
+                  ]
              ]
   ]
 

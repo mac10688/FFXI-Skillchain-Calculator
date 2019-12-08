@@ -1,5 +1,5 @@
-{ mkDerivation, aeson, base, containers, HUnit, mtl, safe, scotty
-, stdenv, text, Unique, wai-cors, wai-extra
+{ mkDerivation, aeson, base, containers, HUnit, mtl, parallel, safe
+, scotty, stdenv, text, Unique, wai-cors, wai-extra
 }:
 mkDerivation {
   pname = "SkillchainCalculatorProject";
@@ -7,11 +7,14 @@ mkDerivation {
   src = ./.;
   isLibrary = false;
   isExecutable = true;
-  libraryHaskellDepends = [ aeson base containers safe Unique ];
-  executableHaskellDepends = [
-    aeson base containers mtl scotty text Unique wai-cors wai-extra
+  libraryHaskellDepends = [
+    aeson base containers parallel safe Unique
   ];
-  testHaskellDepends = [ base containers HUnit ];
+  executableHaskellDepends = [
+    aeson base containers mtl safe scotty text Unique wai-cors
+    wai-extra
+  ];
+  testHaskellDepends = [ base containers HUnit safe ];
   doHaddock = false;
   description = "Calculate skillchains";
   license = stdenv.lib.licenses.bsd3;
