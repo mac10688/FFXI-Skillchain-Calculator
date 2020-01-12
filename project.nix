@@ -1,5 +1,6 @@
-{ mkDerivation, aeson, base, containers, HUnit, mtl, parallel, safe
-, scotty, stdenv, text, Unique, wai-cors, wai-extra
+{ mkDerivation, aeson, base, brick, containers, HUnit, mtl
+, parallel, safe, scotty, stdenv, text, Unique, vty, wai-cors
+, wai-extra
 }:
 mkDerivation {
   pname = "SkillchainCalculatorProject";
@@ -11,8 +12,8 @@ mkDerivation {
     aeson base containers parallel safe Unique
   ];
   executableHaskellDepends = [
-    aeson base containers mtl safe scotty text Unique wai-cors
-    wai-extra
+    aeson base brick containers mtl parallel safe scotty text Unique
+    vty wai-cors wai-extra
   ];
   testHaskellDepends = [ base containers HUnit safe ];
   doHaddock = false;
