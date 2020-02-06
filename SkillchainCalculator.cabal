@@ -131,6 +131,9 @@ executable tui
                       ,parallel
                       ,brick
                       ,vty
+                      ,skillchain-library
+                      ,lens
+                      ,vector
 
   ghc-options:
     -O2

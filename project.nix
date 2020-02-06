@@ -1,5 +1,5 @@
-{ mkDerivation, aeson, base, brick, containers, HUnit, mtl
-, parallel, safe, scotty, stdenv, text, Unique, vty, wai-cors
+{ mkDerivation, aeson, base, brick, containers, HUnit, lens, micro
+, mtl, parallel, safe, scotty, stdenv, text, Unique, vty, wai-cors
 , wai-extra
 }:
 mkDerivation {
@@ -12,8 +12,8 @@ mkDerivation {
     aeson base containers parallel safe Unique
   ];
   executableHaskellDepends = [
-    aeson base brick containers mtl parallel safe scotty text Unique
-    vty wai-cors wai-extra
+    aeson base brick containers lens micro mtl parallel safe scotty
+    text Unique vty wai-cors wai-extra
   ];
   testHaskellDepends = [ base containers HUnit safe ];
   doHaddock = false;

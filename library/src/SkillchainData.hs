@@ -124,6 +124,9 @@ data WeaponType =
     | Marksmanship
     deriving (Eq, Show, Enum, Ord, Bounded, Generic, Read)
 
+allWeaponTypes :: [WeaponType]
+allWeaponTypes = [(minBound :: WeaponType)..]
+
 data Weaponskill = Weaponskill { weaponskillName :: String
                                , weaponType :: WeaponType
                                , skillchainAttributes :: [SkillchainAttr]

@@ -48,7 +48,7 @@ allCombinations (xs:xss) = [ x:xs_ | x <- xs, xs_ <- allCombinations xss ]
 weaponskillsByWeaponType :: Map WeaponType [Weaponskill]
 weaponskillsByWeaponType =
   Map.fromList 
-  $ List.map (\w -> (w, List.filter (\ws -> (weaponType ws) == w) weaponSkills)) [(minBound :: WeaponType)..]
+  $ List.map (\w -> (w, List.filter (\ws -> (weaponType ws) == w) weaponSkills)) allWeaponTypes
  
 mayScFromTwoWsCombo :: [Weaponskill] -> Maybe SkillchainCombination
 mayScFromTwoWsCombo allWs@(w1:w2:ws) = 
