@@ -64,6 +64,7 @@ mayScFromTwoWsCombo allWs@(w1:w2:ws) =
           then Just $ scCombo
           else Nothing
       Nothing -> Nothing
+mayScFromTwoWsCombo [_] = Nothing
 mayScFromTwoWsCombo [] = Nothing
 
 mayScFromTwoWs :: Weaponskill -> Weaponskill -> Maybe Skillchain

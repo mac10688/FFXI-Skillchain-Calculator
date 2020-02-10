@@ -133,7 +133,7 @@ data Weaponskill = Weaponskill { weaponskillName :: String
                                } deriving (Eq, Ord, Generic)
 
 instance Show Weaponskill where
-  show (Weaponskill name _ _) = show name
+  show (Weaponskill name _ _) = name
 
 combo           = Weaponskill "Combo" HandToHand [Impaction]
 shoulderTackle  = Weaponskill "Shoulder Tackle" HandToHand [Reverberation, Impaction]
