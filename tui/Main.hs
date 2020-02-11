@@ -4,14 +4,14 @@
 {-# LANGUAGE RankNTypes #-}
 module Main where
 
-import Brick.Main
-import Brick.Forms
-import Brick.Widgets.Core
-import Brick.Types
-import Brick.AttrMap
-import Brick.Widgets.Border
-import Brick.Util
-import Brick.Widgets.List
+import Brick.Main as Main
+import Brick.Widgets.Core as C
+import Brick.Types as T
+import Brick.AttrMap as A
+import Brick.Widgets.Border as B
+import Brick.Util as U
+import qualified Brick.Widgets.List as L
+import qualified Brick.Focus as F
 
 import Graphics.Vty.Attributes
 import Graphics.Vty.Input.Events
@@ -21,147 +21,139 @@ import Control.Lens.TH
 import Control.Lens.Setter
 import Control.Lens.Getter
 
-import Control.Monad
-import Data.Text
-import Data.Vector
+import Control.Monad as M
+import Data.Text as Text
+import Data.Vector as V
 
 import SkillchainData as D
-import Skillchain
+import Skillchain as SC
 
-data Name = Ws1Field | Ws2Field | Ws3Field | Ws4Field | Ws5Field | Ws6Field | SkillchainComboList deriving (Eq, Ord, Show)
+data Name = Wt1Field | Wt2Field | Wt3Field | Wt4Field | Wt5Field | Wt6Field | SkillchainComboList 
+  deriving (Eq, Ord, Show)
 
-data ChooseableWeaponTypes = NoWeapon | ChosenWeapon D.WeaponType deriving (Eq, Show, Ord, Read)
+data ChooseableWeaponTypes = NoWeapon | ChosenWeapon D.WeaponType deriving (Eq, Ord, Read)
+
+instance Show ChooseableWeaponTypes where
+  show NoWeapon = "No Weapon"
+  show (ChosenWeapon w) = show w
 
 allChooseableWeaponTypes :: [ChooseableWeaponTypes]
 allChooseableWeaponTypes = NoWeapon : (ChosenWeapon <$> [(minBound :: D.WeaponType)..])
 
-data FormState = FormState
-  { 
-    _wsOne :: Maybe ChooseableWeaponTypes
-  , _wsTwo :: Maybe ChooseableWeaponTypes
-  , _wsThree :: Maybe ChooseableWeaponTypes
-  , _wsFour :: Maybe ChooseableWeaponTypes
-  , _wsFive :: Maybe ChooseableWeaponTypes
-  , _wsSix :: Maybe ChooseableWeaponTypes
-  } deriving (Show)
+genericListWeaponTypes :: Name -> L.GenericList Name V.Vector ChooseableWeaponTypes
+genericListWeaponTypes n = L.list n (V.fromList allChooseableWeaponTypes) 1
 
-type MyForm = Form FormState () Name
+type List a = L.GenericList Name V.Vector a
 
 data UIState = UIState
   {
-    _displayCombo :: GenericList Name Vector D.SkillchainCombination
-  , _myForm :: MyForm
+   _wOne :: List ChooseableWeaponTypes
+  ,_wTwo :: List ChooseableWeaponTypes
+  ,_wThree :: List ChooseableWeaponTypes
+  ,_wFour :: List ChooseableWeaponTypes
+  ,_wFive :: List ChooseableWeaponTypes
+  ,_wSix :: List ChooseableWeaponTypes
+  ,_focusRing :: F.FocusRing Name
+  ,_displayCombo :: List D.SkillchainCombination
   }
 
 makeLenses ''UIState
-makeLenses ''FormState
 
-drawUI :: UIState -> [Widget Name]
-drawUI state = return $ vBox $ [createFormSection, createDisplay] ?? state
+drawUI :: UIState -> [T.Widget Name]
+drawUI s = return $ C.vBox $ [createWeaponListBoxes, createComboDisplay] ?? s
 
-createFormSection :: UIState -> Widget Name
-createFormSection = vLimit 10 . renderForm . setFormConcat (hBox . fmap border) . _myForm
+createWeaponListBoxes :: UIState -> T.Widget Name
+createWeaponListBoxes s = 
+  C.vLimit 10 
+  $ C.hBox 
+  $ [wtChoice wOne, wtChoice wTwo, wtChoice wThree, wtChoice wFour, wtChoice wFive, wtChoice wSix] ?? s
 
-createDisplay :: UIState -> Widget Name
-createDisplay state =
+wtChoice :: Lens' UIState (List ChooseableWeaponTypes) -> UIState -> T.Widget Name
+wtChoice lens s = F.withFocusRing (s^.focusRing) (L.renderList renderListItem) (s^.lens)
+
+renderListItem :: (Show a) => Bool -> a -> T.Widget Name
+renderListItem b i = if b then
+                        C.str $ show i
+                     else
+                        C.str $ show i
+
+createComboDisplay :: UIState -> T.Widget Name
+createComboDisplay state =
   let
     combinations = state^.displayCombo
   in
-    renderList (\b sc -> if b then withAttr (attrName "Red") $ str $ show sc else str $ show sc) False combinations
+    L.renderList renderListItem True combinations
     
-createComboRow :: D.SkillchainCombination -> Widget Name
-createComboRow (D.ScStart ws cont) = hBox $ showWs ws <+> str " -> ": (createComboRow' cont)
+createComboRow :: D.SkillchainCombination -> T.Widget Name
+createComboRow (D.ScStart ws cont) = C.hBox $ showWs ws <+> C.str " -> ": (createComboRow' cont)
 
-createComboRow' :: D.ScContinuation -> [Widget Name]
-createComboRow' (D.ScContinuation ws sc (Just continue)) = showWs ws <+> str " -> " <+> showSc sc <+> str " -> ": createComboRow' continue
-createComboRow' (D.ScContinuation ws sc Nothing) = [showWs ws <+> str " -> " <+> showSc sc]
+createComboRow' :: D.ScContinuation -> [T.Widget Name]
+createComboRow' (D.ScContinuation ws sc (Just continue)) = showWs ws <+> C.str " -> " <+> showSc sc <+> C.str " -> ": createComboRow' continue
+createComboRow' (D.ScContinuation ws sc Nothing) = [showWs ws <+> C.str " -> " <+> showSc sc]
 
-showWs :: D.Weaponskill -> Widget Name
-showWs ws = withAttr (attrName "Red") $ str $ (show ws)
+showWs :: D.Weaponskill -> T.Widget Name
+showWs ws = C.withAttr (A.attrName "Red") $ C.str $ (show ws)
 
-showSc :: D.Skillchain -> Widget Name
-showSc sc = withAttr (attrName "Blue") $ str $ (show sc)
+showSc :: D.Skillchain -> T.Widget Name
+showSc sc = C.withAttr (A.attrName "Blue") $ C.str $ (show sc)
 
-mkForm :: FormState -> MyForm
-mkForm = newForm 
-  [makeLabel "Weapon Type 1" @@= (createListField wsOne Ws1Field)
-  ,makeLabel "Weapon Type 2" @@= (createListField wsTwo Ws2Field)
-  ,makeLabel "Weapon Type 3" @@= (createListField wsThree Ws3Field)
-  ,makeLabel "Weapon Type 4" @@= (createListField wsFour Ws4Field)
-  ,makeLabel "Weapon Type 5" @@= (createListField wsFive Ws5Field)
-  ,makeLabel "Weapon Type 6" @@= (createListField wsSix Ws6Field)
-  ]
+makeLabel :: String -> T.Widget Name -> T.Widget Name
+makeLabel s = (<=>) $ C.padBottom (T.Pad 1) . C.padTop (T.Pad 1) $ (C.str s)
 
-makeLabel :: String -> Widget Name -> Widget Name
-makeLabel s = (<=>) $ padBottom (Pad 1) . padTop (Pad 1) $ (str s)
+handleEvent :: UIState -> T.BrickEvent Name () -> T.EventM Name (T.Next UIState)
+handleEvent s (VtyEvent (EvKey (KChar 'q') []))  = Main.halt s
+handleEvent s (VtyEvent (EvKey (KChar '\t') [])) = Main.continue $ s & focusRing %~ F.focusNext
+handleEvent s (VtyEvent (EvKey KBackTab [])) = Main.continue $ s & focusRing %~ F.focusPrev
+handleEvent s (T.VtyEvent ev) = do
+  newList <- L.handleListEvent ev $ s^.wOne
+  Main.continue $ s & wOne.~newList
+--handleEvent s (VtyEvent (EvKey (KChar 'j') [])) = 
+  --let
+    --combo = s^.displayCombo
+  --in
+  --Main.continue $ s & displayCombo.~ (L.listMoveDown combo)
+--handleEvent s (VtyEvent (EvKey KEnter [])) =
+  --let
+    --fs = getFormState s
+    --possibleWeaponTypesChosen = [fs^.wsOne, fs^.wsTwo, fs^.wsThree, fs^.wsFour, fs^.wsFive, fs^.wsSix]
+    --weaponTypes = [wt | Just (ChosenWeapon wt) <- possibleWeaponTypesChosen]
+    --skillchains = scCombinations weaponTypes
+  --in
+  --continue $ s & displayCombo.~ (list SkillchainComboList (fromList skillchains) 1)
+--handleEvent s ev = do
+  --newForm <- handleFormEvent ev $ s^.myForm
+  --continue $ s & myForm.~newForm
 
-createListField :: (Ord n, Show n) => Lens' s (Maybe ChooseableWeaponTypes) -> n -> s-> FormFieldState s () n
-createListField lens name s = listField 
-  (const $ fromList allChooseableWeaponTypes) 
-  lens
-  (\b s -> case s of
-             NoWeapon -> if b then withAttr focusedFormInputAttr $ str "No Weapon" else str "No Weapon" 
-             ChosenWeapon w -> if b then withAttr focusedFormInputAttr $ str (show w) else str (show w)) 
-  1
-  name
-  s
-
-getFormState :: UIState -> FormState
-getFormState state = state ^. myForm . (to formState)
-
-handleEvent :: UIState -> BrickEvent Name () -> EventM Name (Next UIState)
-handleEvent s (VtyEvent (EvKey (KChar 'q') []))  = halt s
-handleEvent s (VtyEvent (EvKey (KChar 'j') [])) = 
-  let
-    combo = s^.displayCombo
-  in
-  continue $ s & displayCombo.~ (listMoveDown combo)
-handleEvent s (VtyEvent (EvKey KEnter [])) =
-  let
-    fs = getFormState s
-    possibleWeaponTypesChosen = [fs^.wsOne, fs^.wsTwo, fs^.wsThree, fs^.wsFour, fs^.wsFive, fs^.wsSix]
-    weaponTypes = [wt | Just (ChosenWeapon wt) <- possibleWeaponTypesChosen]
-    skillchains = scCombinations weaponTypes
-  in
-  continue $ s & displayCombo.~ (list SkillchainComboList (fromList skillchains) 1)
-handleEvent s ev = do
-  newForm <- handleFormEvent ev $ s^.myForm
-  continue $ s & myForm.~newForm
-
-theMap :: AttrMap
-theMap= attrMap defAttr [(focusedFormInputAttr, red `on` blue)
-                        ,(attrName "Red", red `on` black)
-                        ,(attrName "Blue", blue `on` black)]
-
-initFormState :: FormState
-initFormState = FormState
-  {
-    _wsOne = Nothing
-  , _wsTwo = Nothing
-  , _wsThree = Nothing
-  , _wsFour = Nothing
-  , _wsFive = Nothing
-  , _wsSix = Nothing
-  }
+theMap :: A.AttrMap
+theMap= A.attrMap defAttr [(A.attrName "Red", red `on` black)
+                          ,(A.attrName "Blue", blue `on` black)
+                          ,(L.listSelectedAttr, white `on` black)
+                          ,(L.listSelectedFocusedAttr, red `on` black)]
 
 initUIState :: UIState
 initUIState = UIState
   {
-    _myForm = mkForm initFormState
-  , _displayCombo = list SkillchainComboList (fromList []) 1
+   _wOne = genericListWeaponTypes Wt1Field
+  ,_wTwo = genericListWeaponTypes Wt2Field
+  ,_wThree = genericListWeaponTypes Wt3Field
+  ,_wFour = genericListWeaponTypes Wt4Field
+  ,_wFive = genericListWeaponTypes Wt5Field
+  ,_wSix = genericListWeaponTypes Wt6Field
+  ,_focusRing = F.focusRing [Wt1Field, Wt2Field, Wt3Field, Wt4Field, Wt5Field, Wt6Field]
+  , _displayCombo = L.list SkillchainComboList (fromList []) 1
   }
 
-app :: App UIState () Name
-app = App { appDraw = drawUI
-          , appChooseCursor = neverShowCursor
-          , appHandleEvent = handleEvent
-          , appStartEvent = return
-          , appAttrMap = const theMap
-          }
+app :: Main.App UIState () Name
+app = Main.App  { appDraw = drawUI
+                , appChooseCursor = neverShowCursor
+                , appHandleEvent = handleEvent
+                , appStartEvent = return
+                , appAttrMap = const theMap
+                }
 
 main :: IO ()
 main = do
   let state = initUIState
-  void $ defaultMain app state
+  void $ Main.defaultMain app state
 
 
