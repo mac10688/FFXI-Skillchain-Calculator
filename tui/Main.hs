@@ -78,11 +78,8 @@ renderListItem b i = if b then
                         C.str $ show i
 
 createComboDisplay :: UIState -> T.Widget Name
-createComboDisplay state =
-  let
-    combinations = state^.displayCombo
-  in
-    L.renderList renderListItem True combinations
+createComboDisplay s =
+    F.withFocusRing (s^.focusRing) (L.renderList renderListItem) (s^.displayCombo)
     
 createComboRow :: D.SkillchainCombination -> T.Widget Name
 createComboRow (D.ScStart ws cont) = C.hBox $ showWs ws <+> C.str " -> ": (createComboRow' cont)
@@ -104,25 +101,45 @@ handleEvent :: UIState -> T.BrickEvent Name () -> T.EventM Name (T.Next UIState)
 handleEvent s (VtyEvent (EvKey (KChar 'q') []))  = Main.halt s
 handleEvent s (VtyEvent (EvKey (KChar '\t') [])) = Main.continue $ s & focusRing %~ F.focusNext
 handleEvent s (VtyEvent (EvKey KBackTab [])) = Main.continue $ s & focusRing %~ F.focusPrev
+handleEvent s (VtyEvent (EvKey KEnter [])) =
+  let
+    weaponTypes = getWeaponTypes [s^.wOne, s^.wTwo, s^.wThree, s^.wFour, s^.wFive, s^.wSix]
+    skillchains = scCombinations weaponTypes
+  in
+  Main.continue $ s & displayCombo.~ (L.list SkillchainComboList (fromList skillchains) 1)
 handleEvent s (T.VtyEvent ev) = do
-  newList <- L.handleListEvent ev $ s^.wOne
-  Main.continue $ s & wOne.~newList
---handleEvent s (VtyEvent (EvKey (KChar 'j') [])) = 
-  --let
-    --combo = s^.displayCombo
-  --in
-  --Main.continue $ s & displayCombo.~ (L.listMoveDown combo)
---handleEvent s (VtyEvent (EvKey KEnter [])) =
-  --let
-    --fs = getFormState s
-    --possibleWeaponTypesChosen = [fs^.wsOne, fs^.wsTwo, fs^.wsThree, fs^.wsFour, fs^.wsFive, fs^.wsSix]
-    --weaponTypes = [wt | Just (ChosenWeapon wt) <- possibleWeaponTypesChosen]
-    --skillchains = scCombinations weaponTypes
-  --in
-  --continue $ s & displayCombo.~ (list SkillchainComboList (fromList skillchains) 1)
---handleEvent s ev = do
-  --newForm <- handleFormEvent ev $ s^.myForm
-  --continue $ s & myForm.~newForm
+  let currentFocus = F.focusGetCurrent $ s^.focusRing
+  case currentFocus of
+    Just name ->
+      case name of
+        Wt1Field -> do
+          newList <- L.handleListEvent ev $ s^.wOne
+          Main.continue $ s & wOne.~newList
+        Wt2Field -> do
+          newList <- L.handleListEvent ev $ s^.wTwo
+          Main.continue $ s & wTwo.~newList
+        Wt3Field -> do
+          newList <- L.handleListEvent ev $ s^.wThree
+          Main.continue $ s & wThree.~newList
+        Wt4Field -> do
+          newList <- L.handleListEvent ev $ s^.wFour
+          Main.continue $ s & wFour.~newList
+        Wt5Field -> do
+          newList <- L.handleListEvent ev $ s^.wFive
+          Main.continue $ s & wFive.~newList
+        Wt6Field -> do
+          newList <- L.handleListEvent ev $ s^.wSix
+          Main.continue $ s & wSix.~newList
+        SkillchainComboList -> do
+          newList <- L.handleListEvent ev $ s^.displayCombo
+          Main.continue $ s & displayCombo.~newList
+    Nothing -> Main.continue s
+
+handleEvent s ev = do
+  Main.continue s
+
+getWeaponTypes :: [List ChooseableWeaponTypes] -> [D.WeaponType]
+getWeaponTypes list = [w | Just (_, ChosenWeapon w) <- L.listSelectedElement <$> list]
 
 theMap :: A.AttrMap
 theMap= A.attrMap defAttr [(A.attrName "Red", red `on` black)
@@ -139,7 +156,7 @@ initUIState = UIState
   ,_wFour = genericListWeaponTypes Wt4Field
   ,_wFive = genericListWeaponTypes Wt5Field
   ,_wSix = genericListWeaponTypes Wt6Field
-  ,_focusRing = F.focusRing [Wt1Field, Wt2Field, Wt3Field, Wt4Field, Wt5Field, Wt6Field]
+  ,_focusRing = F.focusRing [Wt1Field, Wt2Field, Wt3Field, Wt4Field, Wt5Field, Wt6Field, SkillchainComboList]
   , _displayCombo = L.list SkillchainComboList (fromList []) 1
   }
 
