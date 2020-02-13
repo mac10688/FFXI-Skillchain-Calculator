@@ -66,10 +66,20 @@ createWeaponListBoxes :: UIState -> T.Widget Name
 createWeaponListBoxes s = 
   C.vLimit 10 
   $ C.hBox 
-  $ [wtChoice wOne, wtChoice wTwo, wtChoice wThree, wtChoice wFour, wtChoice wFive, wtChoice wSix] ?? s
+  $ [ wtChoice "Weapon 1" wOne
+    , wtChoice "Weapon 2" wTwo
+    , wtChoice "Weapon 3" wThree
+    , wtChoice "Weapon 4" wFour
+    , wtChoice "Weapon 5" wFive
+    , wtChoice "Weapon 6" wSix] ?? s
 
-wtChoice :: Lens' UIState (List ChooseableWeaponTypes) -> UIState -> T.Widget Name
-wtChoice lens s = F.withFocusRing (s^.focusRing) (L.renderList renderListItem) (s^.lens)
+wtChoice :: String -> Lens' UIState (List ChooseableWeaponTypes) -> UIState -> T.Widget Name
+wtChoice label lens s = 
+  B.borderWithLabel (str label) 
+  $ F.withFocusRing (s^.focusRing) (L.renderList renderListItem) (s^.lens)
+
+renderCombo :: Bool -> D.SkillchainCombination -> T.Widget Name
+renderCombo b sc = createComboRow sc
 
 renderListItem :: (Show a) => Bool -> a -> T.Widget Name
 renderListItem b i = if b then
@@ -78,8 +88,9 @@ renderListItem b i = if b then
                         C.str $ show i
 
 createComboDisplay :: UIState -> T.Widget Name
-createComboDisplay s =
-    F.withFocusRing (s^.focusRing) (L.renderList renderListItem) (s^.displayCombo)
+createComboDisplay s = 
+  B.borderWithLabel (str "Skillchain Combinations") 
+  $ F.withFocusRing (s^.focusRing) (L.renderList renderCombo) (s^.displayCombo)
     
 createComboRow :: D.SkillchainCombination -> T.Widget Name
 createComboRow (D.ScStart ws cont) = C.hBox $ showWs ws <+> C.str " -> ": (createComboRow' cont)
@@ -89,10 +100,22 @@ createComboRow' (D.ScContinuation ws sc (Just continue)) = showWs ws <+> C.str "
 createComboRow' (D.ScContinuation ws sc Nothing) = [showWs ws <+> C.str " -> " <+> showSc sc]
 
 showWs :: D.Weaponskill -> T.Widget Name
-showWs ws = C.withAttr (A.attrName "Red") $ C.str $ (show ws)
+showWs ws = C.withAttr (A.attrName "Weaponskill") $ C.str $ (show ws)
 
 showSc :: D.Skillchain -> T.Widget Name
-showSc sc = C.withAttr (A.attrName "Blue") $ C.str $ (show sc)
+showSc sc = case sc of
+              Liquefaction -> lvlOneSkillchain "Liquefaction"
+              Impaction -> lvlOneSkillchain "Impaction"
+              Detonation -> lvlOneSkillchain "Detonation"
+              Scission -> lvlOneSkillchain "Scission"
+              Reverberation -> lvlOneSkillchain "Reverberation"
+              Induration -> lvlOneSkillchain "Induration"
+              Compression -> lvlOneSkillchain "Compression"
+              Transfixion -> lvlOneSkillchain "Transfixion"
+              otherwise -> lvlOneSkillchain "Skillchain"
+            where
+              lvlOneSkillchain a = C.withAttr (A.attrName a) $ C.str $ show sc
+              lvlTwoSkillchain a b = C.str <$> (show sc)
 
 makeLabel :: String -> T.Widget Name -> T.Widget Name
 makeLabel s = (<=>) $ C.padBottom (T.Pad 1) . C.padTop (T.Pad 1) $ (C.str s)
@@ -142,10 +165,20 @@ getWeaponTypes :: [List ChooseableWeaponTypes] -> [D.WeaponType]
 getWeaponTypes list = [w | Just (_, ChosenWeapon w) <- L.listSelectedElement <$> list]
 
 theMap :: A.AttrMap
-theMap= A.attrMap defAttr [(A.attrName "Red", red `on` black)
-                          ,(A.attrName "Blue", blue `on` black)
-                          ,(L.listSelectedAttr, white `on` black)
-                          ,(L.listSelectedFocusedAttr, red `on` black)]
+theMap= A.attrMap defAttr [(A.attrName "Red", fg red)
+                          ,(A.attrName "Blue", fg blue)
+                          ,(A.attrName "Weaponskill", fg $ rgbColor 90 90 90)
+                          ,(A.attrName "Skillchain", fg yellow)
+                          ,(A.attrName "Liquefaction", fg $ rgbColor 255 0 0)
+                          ,(A.attrName "Impaction", fg $ rgbColor 147 112 219)
+                          ,(A.attrName "Detonation", fg $ rgbColor 50 205 50)
+                          ,(A.attrName "Scission", fg $ rgbColor 184 134 11)
+                          ,(A.attrName "Reverberation", fg $ rgbColor 0 206 209)
+                          ,(A.attrName "Induration", fg $ rgbColor 0 255 255)
+                          ,(A.attrName "Compression", fg $ rgbColor 90 90 90)
+                          ,(A.attrName "Transfixion", fg $ rgbColor 255 255 255)
+                          ,(L.listSelectedAttr, fg white)
+                          ,(L.listSelectedFocusedAttr, fg red)]
 
 initUIState :: UIState
 initUIState = UIState
