@@ -112,11 +112,19 @@ showSc sc = case sc of
               Induration -> lvlOneSkillchain "Induration"
               Compression -> lvlOneSkillchain "Compression"
               Transfixion -> lvlOneSkillchain "Transfixion"
+              Fusion -> lvlTwoSkillchain "Liquefaction" "Impaction" "Fusion"
+              Fragmentation -> lvlTwoSkillchain "Detonation" "Impaction" "Fragmentation"
+              Gravitation -> lvlTwoSkillchain "Compression" "Scission" "Gravitation"
+              Distortion -> lvlTwoSkillchain "Reverberation" "Induration" "Distortion"
+              Light -> lvlOneSkillchain "Light"
               otherwise -> lvlOneSkillchain "Skillchain"
             where
               lvlOneSkillchain a = C.withAttr (A.attrName a) $ C.str $ show sc
-              lvlTwoSkillchain a b = C.str <$> (show sc)
 
+              lvlTwoSkillchain :: String -> String -> String -> T.Widget Name
+              lvlTwoSkillchain _ _ [] = emptyWidget
+              lvlTwoSkillchain a b (x:xs) = (C.withAttr (A.attrName a) $ C.str $ [x]) <+> (lvlTwoSkillchain b a xs)
+                
 makeLabel :: String -> T.Widget Name -> T.Widget Name
 makeLabel s = (<=>) $ C.padBottom (T.Pad 1) . C.padTop (T.Pad 1) $ (C.str s)
 
@@ -167,7 +175,7 @@ getWeaponTypes list = [w | Just (_, ChosenWeapon w) <- L.listSelectedElement <$>
 theMap :: A.AttrMap
 theMap= A.attrMap defAttr [(A.attrName "Red", fg red)
                           ,(A.attrName "Blue", fg blue)
-                          ,(A.attrName "Weaponskill", fg $ rgbColor 90 90 90)
+                          ,(A.attrName "Weaponskill", fg $ rgbColor 155 155 0)
                           ,(A.attrName "Skillchain", fg yellow)
                           ,(A.attrName "Liquefaction", fg $ rgbColor 255 0 0)
                           ,(A.attrName "Impaction", fg $ rgbColor 147 112 219)
@@ -176,7 +184,8 @@ theMap= A.attrMap defAttr [(A.attrName "Red", fg red)
                           ,(A.attrName "Reverberation", fg $ rgbColor 0 206 209)
                           ,(A.attrName "Induration", fg $ rgbColor 0 255 255)
                           ,(A.attrName "Compression", fg $ rgbColor 90 90 90)
-                          ,(A.attrName "Transfixion", fg $ rgbColor 255 255 255)
+                          ,(A.attrName "Transfixion", fg $ rgbColor 200 200 200)
+                          ,(A.attrName "Light", fg $ rgbColor 230 230 230)
                           ,(L.listSelectedAttr, fg white)
                           ,(L.listSelectedFocusedAttr, fg red)]
 
