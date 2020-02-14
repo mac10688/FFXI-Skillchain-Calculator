@@ -76,16 +76,13 @@ createWeaponListBoxes s =
 wtChoice :: String -> Lens' UIState (List ChooseableWeaponTypes) -> UIState -> T.Widget Name
 wtChoice label lens s = 
   B.borderWithLabel (str label) 
-  $ F.withFocusRing (s^.focusRing) (L.renderList renderListItem) (s^.lens)
+  $ F.withFocusRing (s^.focusRing) (L.renderList renderWeaponType) (s^.lens)
 
 renderCombo :: Bool -> D.SkillchainCombination -> T.Widget Name
 renderCombo b sc = createComboRow sc
 
-renderListItem :: (Show a) => Bool -> a -> T.Widget Name
-renderListItem b i = if b then
-                        C.str $ show i
-                     else
-                        C.str $ show i
+renderWeaponType :: Bool -> ChooseableWeaponTypes -> T.Widget Name
+renderWeaponType _ i = C.str $ show i
 
 createComboDisplay :: UIState -> T.Widget Name
 createComboDisplay s = 
@@ -96,34 +93,42 @@ createComboRow :: D.SkillchainCombination -> T.Widget Name
 createComboRow (D.ScStart ws cont) = C.hBox $ showWs ws <+> C.str " -> ": (createComboRow' cont)
 
 createComboRow' :: D.ScContinuation -> [T.Widget Name]
-createComboRow' (D.ScContinuation ws sc (Just continue)) = showWs ws <+> C.str " -> " <+> showSc sc <+> C.str " -> ": createComboRow' continue
-createComboRow' (D.ScContinuation ws sc Nothing) = [showWs ws <+> C.str " -> " <+> showSc sc]
+createComboRow' (D.ScContinuation ws sc (Just continue)) = showWsAndSc ws sc <+> C.str " -> " : createComboRow' continue
+createComboRow' (D.ScContinuation ws sc Nothing) = [showWsAndSc ws sc]
+
+showWsAndSc :: D.Weaponskill -> D.Skillchain -> T.Widget Name
+showWsAndSc ws sc = showWs ws <+> C.str " -> " <+> showSc sc
 
 showWs :: D.Weaponskill -> T.Widget Name
 showWs ws = C.withAttr (A.attrName "Weaponskill") $ C.str $ (show ws)
 
 showSc :: D.Skillchain -> T.Widget Name
 showSc sc = case sc of
-              Liquefaction -> lvlOneSkillchain "Liquefaction"
-              Impaction -> lvlOneSkillchain "Impaction"
-              Detonation -> lvlOneSkillchain "Detonation"
-              Scission -> lvlOneSkillchain "Scission"
-              Reverberation -> lvlOneSkillchain "Reverberation"
-              Induration -> lvlOneSkillchain "Induration"
-              Compression -> lvlOneSkillchain "Compression"
-              Transfixion -> lvlOneSkillchain "Transfixion"
-              Fusion -> lvlTwoSkillchain "Liquefaction" "Impaction" "Fusion"
-              Fragmentation -> lvlTwoSkillchain "Detonation" "Impaction" "Fragmentation"
-              Gravitation -> lvlTwoSkillchain "Compression" "Scission" "Gravitation"
-              Distortion -> lvlTwoSkillchain "Reverberation" "Induration" "Distortion"
-              Light -> lvlOneSkillchain "Light"
-              otherwise -> lvlOneSkillchain "Skillchain"
+              Liquefaction -> createOneColorWidget "Liquefaction"
+              Impaction -> createOneColorWidget "Impaction"
+              Detonation -> createOneColorWidget "Detonation"
+              Scission -> createOneColorWidget "Scission"
+              Reverberation -> createOneColorWidget "Reverberation"
+              Induration -> createOneColorWidget "Induration"
+              Compression -> createOneColorWidget "Compression"
+              Transfixion -> createOneColorWidget "Transfixion"
+              Fusion -> createAlternateColorWidget "Liquefaction" "Impaction" "Fusion"
+              Fragmentation -> createAlternateColorWidget "Detonation" "Impaction" "Fragmentation"
+              Gravitation -> createAlternateColorWidget "Compression" "Scission" "Gravitation"
+              Distortion -> createAlternateColorWidget "Reverberation" "Induration" "Distortion"
+              Light -> createOneColorWidget "Light"
+              Light2 -> createOneColorWidget "Light"
+              Radiance -> createOneColorWidget "Radiance"
+              Darkness -> createOneColorWidget "Dark"
+              Darkness2 -> createOneColorWidget "Dark"
+              Umbra -> createOneColorWidget "Umbra"
             where
-              lvlOneSkillchain a = C.withAttr (A.attrName a) $ C.str $ show sc
+              createOneColorWidget :: String -> Widget Name
+              createOneColorWidget a = C.withAttr (A.attrName a) $ C.str $ show sc
 
-              lvlTwoSkillchain :: String -> String -> String -> T.Widget Name
-              lvlTwoSkillchain _ _ [] = emptyWidget
-              lvlTwoSkillchain a b (x:xs) = (C.withAttr (A.attrName a) $ C.str $ [x]) <+> (lvlTwoSkillchain b a xs)
+              createAlternateColorWidget :: String -> String -> String -> T.Widget Name
+              createAlternateColorWidget _ _ [] = emptyWidget
+              createAlternateColorWidget a b (x:xs) = (C.withAttr (A.attrName a) $ C.str $ [x]) <+> (createAlternateColorWidget b a xs)
                 
 makeLabel :: String -> T.Widget Name -> T.Widget Name
 makeLabel s = (<=>) $ C.padBottom (T.Pad 1) . C.padTop (T.Pad 1) $ (C.str s)
@@ -141,30 +146,21 @@ handleEvent s (VtyEvent (EvKey KEnter [])) =
 handleEvent s (T.VtyEvent ev) = do
   let currentFocus = F.focusGetCurrent $ s^.focusRing
   case currentFocus of
-    Just name ->
+    Just name -> do
       case name of
-        Wt1Field -> do
-          newList <- L.handleListEvent ev $ s^.wOne
-          Main.continue $ s & wOne.~newList
-        Wt2Field -> do
-          newList <- L.handleListEvent ev $ s^.wTwo
-          Main.continue $ s & wTwo.~newList
-        Wt3Field -> do
-          newList <- L.handleListEvent ev $ s^.wThree
-          Main.continue $ s & wThree.~newList
-        Wt4Field -> do
-          newList <- L.handleListEvent ev $ s^.wFour
-          Main.continue $ s & wFour.~newList
-        Wt5Field -> do
-          newList <- L.handleListEvent ev $ s^.wFive
-          Main.continue $ s & wFive.~newList
-        Wt6Field -> do
-          newList <- L.handleListEvent ev $ s^.wSix
-          Main.continue $ s & wSix.~newList
-        SkillchainComboList -> do
-          newList <- L.handleListEvent ev $ s^.displayCombo
-          Main.continue $ s & displayCombo.~newList
+                    Wt1Field -> myHandleEvent wOne
+                    Wt2Field -> myHandleEvent wTwo
+                    Wt3Field -> myHandleEvent wThree
+                    Wt4Field -> myHandleEvent wFour
+                    Wt5Field -> myHandleEvent wFive
+                    Wt6Field -> myHandleEvent wSix
+                    SkillchainComboList -> myHandleEvent displayCombo
+
     Nothing -> Main.continue s
+  where
+    myHandleEvent :: Lens' UIState (List a) -> T.EventM Name (T.Next UIState)
+    myHandleEvent lens = do newList <- L.handleListEvent ev $ s^.lens
+                            Main.continue $ s & lens.~newList
 
 handleEvent s ev = do
   Main.continue s
@@ -173,21 +169,22 @@ getWeaponTypes :: [List ChooseableWeaponTypes] -> [D.WeaponType]
 getWeaponTypes list = [w | Just (_, ChosenWeapon w) <- L.listSelectedElement <$> list]
 
 theMap :: A.AttrMap
-theMap= A.attrMap defAttr [(A.attrName "Red", fg red)
-                          ,(A.attrName "Blue", fg blue)
-                          ,(A.attrName "Weaponskill", fg $ rgbColor 155 155 0)
-                          ,(A.attrName "Skillchain", fg yellow)
+theMap= A.attrMap defAttr [(A.attrName "Background", bg $ rgbColor 0 0 0)
+                          ,(A.attrName "Weaponskill", fg $ rgbColor 148 148 248)
                           ,(A.attrName "Liquefaction", fg $ rgbColor 255 0 0)
                           ,(A.attrName "Impaction", fg $ rgbColor 147 112 219)
                           ,(A.attrName "Detonation", fg $ rgbColor 50 205 50)
                           ,(A.attrName "Scission", fg $ rgbColor 184 134 11)
                           ,(A.attrName "Reverberation", fg $ rgbColor 0 206 209)
                           ,(A.attrName "Induration", fg $ rgbColor 0 255 255)
-                          ,(A.attrName "Compression", fg $ rgbColor 90 90 90)
+                          ,(A.attrName "Compression", fg $ rgbColor 169 169 169)
                           ,(A.attrName "Transfixion", fg $ rgbColor 200 200 200)
                           ,(A.attrName "Light", fg $ rgbColor 230 230 230)
-                          ,(L.listSelectedAttr, fg white)
-                          ,(L.listSelectedFocusedAttr, fg red)]
+                          ,(A.attrName "Radiance", fg $ rgbColor 255 255 255)
+                          ,(A.attrName "Dark", fg $ rgbColor 128 128 128)
+                          ,(A.attrName "Umbra", fg $ rgbColor 105 105 105)
+                          ,(L.listSelectedAttr, bg $ rgbColor 1 1 1)
+                          ,(L.listSelectedFocusedAttr, bg $ rgbColor 0 0 128)]
 
 initUIState :: UIState
 initUIState = UIState
